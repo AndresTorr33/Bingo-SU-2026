@@ -1,0 +1,445 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>body{margin:0}[hidden]{display:none!important}</style>
+<title>Mis Cartillas de Bingo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Barlow:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: caller bar on top (type the number, see hits instantly), cards sorted by closeness to winning, master board 1–75, then card entry. */
+:root{
+  --bg:#f5f2f7; --surface:#ffffff; --ink:#1d1730; --muted:#6a6280; --line:#ddd6e6;
+  --indigo:#33286e; --red:#e2343f; --magenta:#d6227f; --mark:#d6227f; --mark-ink:#ffffff;
+  --win:#1b8a4c; --win-bg:#e2f4ea; --warn:#b85c00; --warn-bg:#fff0de;
+  --b:#1f8a4a; --i:#c42a77; --n:#1e86c8; --g:#d9302e; --o:#3a2f86;
+  --display:"Anton","Impact","Arial Narrow",sans-serif;
+  --body:"Barlow",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#141024; --surface:#1f1937; --ink:#efeaf8; --muted:#a59cbd; --line:#352d55;
+  --indigo:#251c55; --red:#ff5a63; --magenta:#ff4fa3; --mark:#e23a8f; --mark-ink:#ffffff;
+  --win:#4fd28a; --win-bg:#173528; --warn:#ffb15c; --warn-bg:#3a2a14;
+  --b:#4fd28a; --i:#ff6fb0; --n:#5cc0ff; --g:#ff6b66; --o:#a99bff; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#141024; --surface:#1f1937; --ink:#efeaf8; --muted:#a59cbd; --line:#352d55;
+  --indigo:#251c55; --red:#ff5a63; --magenta:#ff4fa3; --mark:#e23a8f; --mark-ink:#ffffff;
+  --win:#4fd28a; --win-bg:#173528; --warn:#ffb15c; --warn-bg:#3a2a14;
+  --b:#4fd28a; --i:#ff6fb0; --n:#5cc0ff; --g:#ff6b66; --o:#a99bff; color-scheme:dark}
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.45;padding:0 16px;padding-block:0 48px}
+.wrap{max-width:1080px;margin:0 auto}
+h1,h2{font-family:var(--display);font-weight:400;letter-spacing:.01em;text-wrap:balance;margin:0}
+h2{font-size:1.5rem}
+button{font:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--n);outline-offset:2px}
+.tab{font-variant-numeric:tabular-nums}
+
+/* Caller */
+.caller{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--indigo);color:#fff;margin:0 -16px;padding:14px 16px 16px;border-bottom:4px solid var(--red)}
+.caller-in{max-width:1080px;margin:0 auto;display:grid;gap:12px}
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.top h1{font-size:1.6rem;color:#fff}
+.top h1 span{color:#ff8fc6}
+.mode{display:flex;gap:8px;align-items:center;font-size:.9rem;color:#d9d3f3}
+.mode select{font:inherit;padding:6px 8px;border-radius:8px;border:0;background:#fff;color:#1d1730}
+.entry{display:flex;gap:8px;flex-wrap:wrap}
+.entry input{flex:1 1 160px;min-width:0;font-family:var(--display);font-size:2rem;padding:6px 14px;border-radius:12px;border:0;background:#fff;color:#1d1730;letter-spacing:.04em}
+.entry input::placeholder{font-family:var(--body);font-size:1rem;color:#8a83a0;letter-spacing:0}
+.btn{border:0;border-radius:12px;padding:10px 16px;font-weight:700}
+.btn-call{background:var(--red);color:#fff;font-size:1.1rem}
+.btn-ghost{background:transparent;color:#fff;border:1.5px solid rgba(255,255,255,.4)}
+.btn-ghost:hover{background:rgba(255,255,255,.1)}
+.result{border-radius:12px;padding:10px 14px;background:rgba(255,255,255,.1);min-height:3rem;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.result.hit{background:#fff;color:#1d1730}
+.result.miss{background:rgba(255,255,255,.08)}
+.ball{flex:none;width:58px;height:58px;border-radius:50%;display:grid;place-items:center;font-family:var(--display);line-height:1;color:#1d1730;background:#fff;border:5px solid var(--ballc,#999);text-align:center}
+.ball small{display:block;font-size:.75rem}
+.ball b{font-weight:400;font-size:1.35rem}
+.result .msg{min-width:0;flex:1}
+.result .msg strong{font-size:1.1rem}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}
+.chip{background:var(--mark);color:#fff;border-radius:999px;padding:2px 10px;font-weight:600;font-size:.9rem}
+.recent{display:flex;gap:6px;overflow-x:auto;align-items:center;font-size:.85rem;color:#cfc8ee;padding-bottom:2px}
+.recent .r{flex:none;background:rgba(255,255,255,.12);color:#fff;border-radius:999px;padding:2px 9px;font-weight:600}
+.recent .r.mine{background:#ff8fc6;color:#1d1730}
+.actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.confirm{display:inline-flex;gap:6px;align-items:center;font-size:.9rem}
+.btn-sm{padding:6px 12px;border-radius:9px;font-size:.9rem}
+.btn-danger{background:var(--red);color:#fff}
+
+/* Sections */
+section{margin-top:28px}
+.sec-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+.sec-head p{margin:0;color:var(--muted);font-size:.95rem}
+
+/* Cards */
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:10px;display:grid;gap:8px}
+.card.won{border:2px solid var(--win);box-shadow:0 0 0 4px var(--win-bg)}
+.card.flash{animation:flash 1.2s ease}
+@keyframes flash{0%{box-shadow:0 0 0 0 var(--mark)}40%{box-shadow:0 0 0 6px var(--mark)}100%{box-shadow:0 0 0 0 transparent}}
+.card-head{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.ctrl{font-size:.75rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.ctrl b{font-family:var(--display);font-weight:400;font-size:1.25rem;letter-spacing:.02em;color:var(--ink);margin-left:4px}
+.status{font-weight:700;font-size:.85rem;border-radius:999px;padding:2px 10px;background:var(--bg);color:var(--muted);white-space:nowrap}
+.status.near{background:var(--warn-bg);color:var(--warn)}
+.status.win{background:var(--win);color:#fff}
+.grid{display:grid;grid-template-columns:repeat(5,1fr);gap:3px}
+.grid .h{font-family:var(--display);text-align:center;font-size:1rem;line-height:1.6}
+.cell{aspect-ratio:1;max-width:100%;display:grid;place-items:center;font-family:var(--display);font-size:1.15rem;border-radius:7px;background:var(--bg);color:var(--ink);position:relative}
+.cell.m{background:var(--mark);color:var(--mark-ink)}
+.cell.free{font-family:var(--body);font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;background:var(--indigo);color:#fff;line-height:1.1;text-align:center}
+.cell.last{outline:3px solid var(--ink);outline-offset:-3px;animation:pop .5s ease}
+.cell.need{box-shadow:inset 0 0 0 2px var(--warn)}
+@keyframes pop{0%{transform:scale(.6)}70%{transform:scale(1.12)}100%{transform:scale(1)}}
+.card-foot{display:flex;justify-content:flex-end;gap:6px;flex-wrap:wrap;align-items:center;font-size:.85rem}
+.link{background:none;border:0;color:var(--muted);text-decoration:underline;padding:2px 4px}
+.link.danger{color:var(--red)}
+.need-list{font-size:.85rem;color:var(--warn);font-weight:600;min-height:1.2em}
+.empty{border:2px dashed var(--line);border-radius:14px;padding:24px;color:var(--muted);text-align:center}
+
+/* Board */
+.board{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px;overflow-x:auto}
+.brow{display:grid;grid-template-columns:34px repeat(15,minmax(28px,1fr));gap:4px;min-width:560px;margin-bottom:4px}
+.brow .L{font-family:var(--display);font-size:1.3rem;display:grid;place-items:center}
+.bn{border:0;border-radius:7px;padding:5px 0;background:var(--bg);color:var(--muted);font-family:var(--display);font-size:1rem;position:relative}
+.bn.mine{color:var(--ink);box-shadow:inset 0 0 0 1.5px var(--muted)}
+.bn.called{background:var(--indigo);color:#fff;box-shadow:none}
+.bn.called.mine{background:var(--mark)}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:.85rem;color:var(--muted);margin-top:8px}
+.legend i{display:inline-block;width:14px;height:14px;border-radius:4px;vertical-align:-2px;margin-right:5px}
+
+/* Form */
+.form{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px;display:grid;gap:14px;max-width:520px}
+.form label{font-weight:600;font-size:.9rem;display:block;margin-bottom:4px}
+.form input[type=text]{font:inherit;width:100%;padding:8px 10px;border-radius:9px;border:1.5px solid var(--line);background:var(--bg);color:var(--ink)}
+.fgrid{display:grid;grid-template-columns:repeat(5,1fr);gap:5px}
+.fgrid .h{font-family:var(--display);text-align:center;font-size:1.2rem}
+.fgrid .rng{text-align:center;font-size:.7rem;color:var(--muted);margin-top:-4px}
+.fgrid input{font-family:var(--display)!important;font-size:1.3rem!important;text-align:center;padding:8px 0!important;width:100%;min-width:0}
+.fgrid input.bad{border-color:var(--red)!important;background:color-mix(in srgb,var(--red) 12%,var(--bg))!important}
+.fgrid .freec{display:grid;place-items:center;border-radius:9px;background:var(--indigo);color:#fff;font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;text-align:center}
+.hint{font-size:.85rem;color:var(--muted);margin:4px 0 0}
+.err{color:var(--red);font-weight:600;font-size:.9rem;min-height:1.2em;margin:0}
+.err.ok{color:var(--win)}
+.btn-primary{background:var(--indigo);color:#fff}
+:root[data-theme="dark"] .btn-primary{background:var(--magenta)}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .btn-primary{background:var(--magenta)}}
+.btn-plain{background:var(--bg);color:var(--ink);border:1px solid var(--line)}
+.row{display:flex;gap:8px;flex-wrap:wrap}
+
+@media (max-width:480px){
+  .top h1{font-size:1.3rem}
+  .entry input{font-size:1.6rem}
+  .ball{width:50px;height:50px}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important}}
+</style>
+</head>
+<body>
+
+
+<header class="caller">
+  <div class="caller-in">
+    <div class="top">
+      <h1>Mis Cartillas <span>de Bingo</span></h1>
+      <label class="mode" for="mode">Jugando a
+        <select id="mode">
+          <option value="linea">Línea (fila, columna o diagonal)</option>
+          <option value="esquinas">4 esquinas</option>
+          <option value="lleno">Cartón lleno</option>
+        </select>
+      </label>
+    </div>
+    <form class="entry" id="callForm" autocomplete="off">
+      <input id="callInput" type="text" inputmode="numeric" placeholder="Número que salió (ej. 43 o N43)" aria-label="Número que salió">
+      <button class="btn btn-call" type="submit">Cantar</button>
+    </form>
+    <div class="result" id="result" aria-live="polite"></div>
+    <div class="actions">
+      <div class="recent" id="recent" style="flex:1;min-width:0"></div>
+      <button class="btn btn-ghost btn-sm" id="undoBtn" type="button">Deshacer último</button>
+      <span id="resetWrap"><button class="btn btn-ghost btn-sm" id="resetBtn" type="button">Nuevo juego</button></span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <section>
+    <div class="sec-head">
+      <h2>Tus cartillas</h2>
+      <p id="cardsSummary"></p>
+    </div>
+    <div class="cards" id="cards"></div>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <h2>Tablero 1–75</h2>
+      <p>Toca un número para cantarlo.</p>
+    </div>
+    <div class="board" id="board"></div>
+    <div class="legend">
+      <span><i style="background:var(--mark)"></i>Salió y lo tienes</span>
+      <span><i style="background:var(--indigo)"></i>Salió, no lo tienes</span>
+      <span><i style="box-shadow:inset 0 0 0 1.5px var(--muted);background:var(--bg)"></i>Está en tus cartillas</span>
+    </div>
+  </section>
+
+  <section id="formSec">
+    <div class="sec-head">
+      <h2 id="formTitle">Agregar cartilla</h2>
+    </div>
+    <form class="form" id="cardForm" autocomplete="off">
+      <div>
+        <label for="ctrlIn">Número de control</label>
+        <input type="text" id="ctrlIn" inputmode="numeric" placeholder="ej. 3550">
+      </div>
+      <div>
+        <label for="quick">Escritura rápida (opcional)</label>
+        <input type="text" id="quick" inputmode="numeric" placeholder="24 números fila por fila, separados por espacios">
+        <p class="hint">Lee la cartilla de izquierda a derecha, fila por fila, saltando el centro. Se llena la cuadrícula de abajo.</p>
+      </div>
+      <div class="fgrid" id="fgrid"></div>
+      <p class="hint">En cada casilla, al escribir 2 cifras se salta a la siguiente.</p>
+      <p class="err" id="formErr"></p>
+      <div class="row">
+        <button class="btn btn-primary" type="submit" id="saveBtn">Guardar cartilla</button>
+        <button class="btn btn-plain" type="button" id="clearForm">Limpiar</button>
+      </div>
+    </form>
+  </section>
+</main>
+
+<script>
+(function(){
+const KEY='bingo-cartillas-v1';
+const L='BINGO';
+const COLORS=['--b','--i','--n','--g','--o'];
+const letter=n=>L[Math.floor((n-1)/15)];
+const colOf=n=>Math.floor((n-1)/15);
+
+// Ejemplo inicial: la cartilla de la foto (fila por fila, 0 = centro libre)
+const SEED_VERSION=2;
+const seed={mode:'linea',called:[],seedVersion:SEED_VERSION,cards:[
+ {id:'c3547',control:'3547',grid:[2,18,38,47,70, 1,25,31,54,63, 8,17,0,53,69, 14,24,37,52,62, 13,23,45,60,61]},
+ {id:'c3548',control:'3548',grid:[8,21,32,48,65, 2,29,39,56,71, 7,20,0,55,64, 15,28,31,47,70, 6,27,44,53,63]},
+ {id:'c1',control:'3550',grid:[7,19,43,51,71, 15,25,38,50,63, 14,18,0,57,62, 6,24,37,49,70, 13,16,36,56,68]},
+ {id:'c3551',control:'3551',grid:[8,20,39,56,74, 2,26,33,48,66, 15,19,0,47,73, 6,25,31,55,72, 14,24,44,53,65]},
+ {id:'c3552',control:'3552',grid:[5,18,43,49,72, 11,24,36,57,65, 4,16,0,48,71, 10,29,35,56,70, 9,23,42,47,64]}
+]};
+
+let state;
+try{state=JSON.parse(localStorage.getItem(KEY))}catch(e){}
+if(!state||!Array.isArray(state.cards))state=JSON.parse(JSON.stringify(seed));
+else if((state.seedVersion||1)<SEED_VERSION){
+  // Agrega las cartillas nuevas sin tocar las que ya registraste
+  for(const s of seed.cards)if(!state.cards.some(c=>c.control===s.control))state.cards.push(JSON.parse(JSON.stringify(s)));
+  state.seedVersion=SEED_VERSION;
+  try{localStorage.setItem(KEY,JSON.stringify(state))}catch(e){}
+}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(state))}catch(e){}}
+
+const LINES=[];
+for(let r=0;r<5;r++)LINES.push({name:'fila '+(r+1),idx:[0,1,2,3,4].map(c=>r*5+c)});
+for(let c=0;c<5;c++)LINES.push({name:'columna '+L[c],idx:[0,1,2,3,4].map(r=>r*5+c)});
+LINES.push({name:'diagonal',idx:[0,6,12,18,24]});
+LINES.push({name:'diagonal',idx:[4,8,12,16,20]});
+
+function progress(card,calledSet){
+  const has=i=>card.grid[i]===0||calledSet.has(card.grid[i]);
+  let groups;
+  if(state.mode==='lleno')groups=[{name:'cartón lleno',idx:[...Array(25).keys()]}];
+  else if(state.mode==='esquinas')groups=[{name:'4 esquinas',idx:[0,4,20,24]}];
+  else groups=LINES;
+  let best=null;
+  for(const g of groups){
+    const missing=g.idx.filter(i=>!has(i));
+    if(!best||missing.length<best.missing.length)best={name:g.name,missing};
+  }
+  return best;
+}
+
+// Índice número -> cartillas
+function index(){
+  const m=new Map();
+  for(const c of state.cards)c.grid.forEach((n,i)=>{if(n){if(!m.has(n))m.set(n,[]);m.get(n).push(c)}});
+  return m;
+}
+
+const $=id=>document.getElementById(id);
+let lastResult=null, flashIds=new Set();
+
+function ballHTML(n){
+  return `<div class="ball" style="--ballc:var(${COLORS[colOf(n)]})"><div><small>${letter(n)}</small><b>${n}</b></div></div>`;
+}
+
+function render(){
+  const calledSet=new Set(state.called);
+  const idx=index();
+  const last=state.called[state.called.length-1];
+  $('mode').value=state.mode;
+
+  // Resultado
+  const res=$('result');
+  if(lastResult){
+    const {n,cards,dup}=lastResult;
+    if(dup){res.className='result';res.innerHTML=ballHTML(n)+`<div class="msg"><strong>${letter(n)}-${n} ya había salido.</strong></div>`}
+    else if(cards.length){
+      res.className='result hit';
+      res.innerHTML=ballHTML(n)+`<div class="msg"><strong>¡Lo tienes en ${cards.length} cartilla${cards.length>1?'s':''}!</strong><div class="chips">${cards.map(c=>`<span class="chip">#${esc(c.control||'s/n')}</span>`).join('')}</div></div>`;
+    }else{res.className='result miss';res.innerHTML=ballHTML(n)+`<div class="msg"><strong>${letter(n)}-${n}: no está en ninguna cartilla.</strong></div>`}
+  }else{
+    res.className='result';
+    res.innerHTML=`<div class="msg">Escribe el número que cantaron y pulsa Enter. Verás al instante en qué cartillas está.</div>`;
+  }
+
+  // Recientes
+  const rec=state.called.slice(-12).reverse();
+  $('recent').innerHTML=state.called.length?`<span>Salieron ${state.called.length}:</span>`+rec.map(n=>`<span class="r tab ${idx.has(n)?'mine':''}">${letter(n)}${n}</span>`).join(''):'<span>Aún no sale ningún número.</span>';
+  $('undoBtn').disabled=!state.called.length;
+
+  // Cartillas ordenadas por cercanía
+  const list=state.cards.map(c=>({c,p:progress(c,calledSet)}));
+  list.sort((a,b)=>a.p.missing.length-b.p.missing.length);
+  const wins=list.filter(x=>x.p.missing.length===0).length;
+  const near=list.filter(x=>x.p.missing.length===1).length;
+  $('cardsSummary').textContent=`${state.cards.length} cartilla${state.cards.length!==1?'s':''}`+(wins?` · ${wins} con BINGO`:'')+(near?` · ${near} a un número`:'')+(state.cards.length>1?' · ordenadas de más a menos cerca':'');
+  const wrap=$('cards');
+  if(!state.cards.length){wrap.innerHTML='<div class="empty">Todavía no hay cartillas. Agrégalas abajo.</div>'}
+  else wrap.innerHTML=list.map(({c,p})=>{
+    const k=p.missing.length;
+    const st=k===0?`<span class="status win">¡BINGO! (${p.name})</span>`:k===1?`<span class="status near">Falta 1</span>`:`<span class="status">Faltan ${k}</span>`;
+    const needSet=new Set(k<=2?p.missing:[]);
+    const cells=c.grid.map((n,i)=>{
+      if(!n)return `<div class="cell free">Libre<br>${esc(c.control||'')}</div>`;
+      const m=calledSet.has(n);
+      return `<div class="cell tab ${m?'m':''} ${m&&n===last?'last':''} ${needSet.has(i)?'need':''}">${n}</div>`;
+    }).join('');
+    const needTxt=k>0&&k<=2?`Necesitas: ${p.missing.map(i=>letter(c.grid[i])+c.grid[i]).join(', ')}`:'';
+    return `<article class="card ${k===0?'won':''} ${flashIds.has(c.id)?'flash':''}">
+      <div class="card-head"><span class="ctrl">Control<b>${esc(c.control||'—')}</b></span>${st}</div>
+      <div class="grid">${L.split('').map((l,j)=>`<div class="h" style="color:var(${COLORS[j]})">${l}</div>`).join('')}${cells}</div>
+      <div class="need-list">${needTxt}</div>
+      <div class="card-foot" data-id="${c.id}"><button class="link" data-act="edit">Editar</button><button class="link danger" data-act="del">Eliminar</button></div>
+    </article>`;
+  }).join('');
+  flashIds=new Set();
+
+  // Tablero
+  let b='';
+  for(let r=0;r<5;r++){
+    b+=`<div class="brow"><div class="L" style="color:var(${COLORS[r]})">${L[r]}</div>`;
+    for(let k=1;k<=15;k++){const n=r*15+k;b+=`<button class="bn tab ${idx.has(n)?'mine':''} ${calledSet.has(n)?'called':''}" data-n="${n}" type="button" aria-label="${L[r]} ${n}">${n}</button>`}
+    b+='</div>';
+  }
+  $('board').innerHTML=b;
+}
+function esc(s){return String(s).replace(/[&<>"]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]))}
+
+function call(n){
+  if(!(n>=1&&n<=75))return false;
+  const cards=index().get(n)||[];
+  if(state.called.includes(n)){lastResult={n,cards,dup:true};render();return true}
+  state.called.push(n);
+  lastResult={n,cards};
+  cards.forEach(c=>flashIds.add(c.id));
+  save();render();return true;
+}
+
+$('callForm').addEventListener('submit',e=>{
+  e.preventDefault();
+  const v=$('callInput').value.trim();
+  const n=parseInt(v.replace(/[^0-9]/g,''),10);
+  if(!call(n)){$('result').className='result';$('result').innerHTML='<div class="msg"><strong>Escribe un número del 1 al 75.</strong></div>'}
+  $('callInput').value='';$('callInput').focus();
+});
+$('board').addEventListener('click',e=>{const t=e.target.closest('.bn');if(t)call(+t.dataset.n)});
+$('undoBtn').addEventListener('click',()=>{state.called.pop();lastResult=null;save();render()});
+$('mode').addEventListener('change',e=>{state.mode=e.target.value;save();render()});
+
+function resetIdle(){$('resetWrap').innerHTML='<button class="btn btn-ghost btn-sm" id="resetBtn" type="button">Nuevo juego</button>'}
+$('resetWrap').addEventListener('click',e=>{
+  const t=e.target;
+  if(t.id==='resetBtn'){$('resetWrap').innerHTML='<span class="confirm">¿Borrar números cantados? <button class="btn btn-danger btn-sm" id="resetYes" type="button">Sí</button><button class="btn btn-ghost btn-sm" id="resetNo" type="button">No</button></span>'}
+  else if(t.id==='resetYes'){state.called=[];lastResult=null;save();resetIdle();render()}
+  else if(t.id==='resetNo')resetIdle();
+});
+
+// Cartillas: editar / eliminar
+$('cards').addEventListener('click',e=>{
+  const btn=e.target.closest('button');if(!btn)return;
+  const foot=btn.closest('.card-foot');const id=foot.dataset.id;
+  const act=btn.dataset.act;
+  if(act==='del'){foot.innerHTML='<span>¿Eliminar?</span><button class="btn btn-danger btn-sm" data-act="delyes">Sí</button><button class="btn btn-plain btn-sm" data-act="delno">No</button>'}
+  else if(act==='delno')render();
+  else if(act==='delyes'){state.cards=state.cards.filter(c=>c.id!==id);if(editing===id)clearForm();save();render()}
+  else if(act==='edit'){const c=state.cards.find(c=>c.id===id);loadForm(c);$('formSec').scrollIntoView({behavior:'smooth'})}
+});
+
+// Formulario
+const RANGES=['1–15','16–30','31–45','46–60','61–75'];
+let editing=null;
+const fg=$('fgrid');
+fg.innerHTML=L.split('').map((l,j)=>`<div class="h" style="color:var(${COLORS[j]})">${l}</div>`).join('')+
+  RANGES.map(r=>`<div class="rng">${r}</div>`).join('')+
+  [...Array(25).keys()].map(i=>i===12?'<div class="freec">Libre</div>':`<input type="text" inputmode="numeric" maxlength="2" id="f${i}" data-i="${i}" aria-label="${L[i%5]} fila ${Math.floor(i/5)+1}">`).join('');
+const inputs=[...fg.querySelectorAll('input')];
+inputs.forEach((inp,k)=>{
+  inp.addEventListener('input',()=>{
+    inp.value=inp.value.replace(/\D/g,'');inp.classList.remove('bad');
+    const col=(+inp.dataset.i)%5;const v=inp.value;
+    const done=v.length===2||(col===0&&v.length===1&&+v>=2);
+    if(done&&inputs[k+1])inputs[k+1].focus();
+  });
+  inp.addEventListener('keydown',e=>{
+    if(e.key==='Enter'){e.preventDefault();if(inputs[k+1])inputs[k+1].focus();else $('saveBtn').focus()}
+    if(e.key==='Backspace'&&!inp.value&&inputs[k-1]){e.preventDefault();inputs[k-1].focus()}
+  });
+});
+$('quick').addEventListener('input',()=>{
+  const nums=$('quick').value.split(/[^0-9]+/).filter(Boolean);
+  inputs.forEach((inp,k)=>{inp.value=nums[k]||'';inp.classList.remove('bad')});
+});
+$('ctrlIn').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();inputs[0].focus()}});
+
+function clearForm(){editing=null;$('ctrlIn').value='';$('quick').value='';inputs.forEach(i=>{i.value='';i.classList.remove('bad')});$('formErr').textContent='';$('formErr').classList.remove('ok');$('formTitle').textContent='Agregar cartilla';$('saveBtn').textContent='Guardar cartilla'}
+function loadForm(c){clearForm();editing=c.id;$('ctrlIn').value=c.control;inputs.forEach(inp=>{inp.value=c.grid[+inp.dataset.i]||''});$('formTitle').textContent='Editar cartilla #'+(c.control||'');$('saveBtn').textContent='Guardar cambios'}
+$('clearForm').addEventListener('click',clearForm);
+
+$('cardForm').addEventListener('submit',e=>{
+  e.preventDefault();
+  $('formErr').classList.remove('ok');
+  const grid=Array(25).fill(0);let errs=[];const seen=new Map();
+  inputs.forEach(inp=>{
+    const i=+inp.dataset.i,col=i%5,n=parseInt(inp.value,10);
+    inp.classList.remove('bad');
+    if(!n){inp.classList.add('bad');errs.push('vacía');return}
+    if(n<col*15+1||n>col*15+15){inp.classList.add('bad');errs.push(`${n} no va en la columna ${L[col]} (${RANGES[col]})`);return}
+    if(seen.has(n)){inp.classList.add('bad');errs.push(`${n} está repetido`);return}
+    seen.set(n,1);grid[i]=n;
+  });
+  if(errs.length){
+    const empt=errs.filter(x=>x==='vacía').length;const other=errs.filter(x=>x!=='vacía');
+    $('formErr').textContent=[empt?`Faltan ${empt} casilla${empt>1?'s':''}.`:'',...other.slice(0,3)].filter(Boolean).join(' · ');
+    return;
+  }
+  const control=$('ctrlIn').value.trim();
+  const dupCtrl=control&&state.cards.find(c=>c.control===control&&c.id!==editing);
+  if(dupCtrl){$('formErr').textContent=`Ya tienes una cartilla con control ${control}.`;return}
+  if(editing){const c=state.cards.find(c=>c.id===editing);c.control=control;c.grid=grid}
+  else state.cards.push({id:'c'+Date.now().toString(36),control,grid});
+  save();clearForm();render();
+  $('formErr').textContent='Cartilla guardada.';$('formErr').classList.add('ok');$('ctrlIn').focus();
+});
+
+render();
+})();
+</script>
+
+</body>
+</html>
